@@ -1,0 +1,65 @@
+<!doctype html><meta charset=utf-8><title>Overlay</title>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;700;800&display=swap" rel=stylesheet>
+<style>
+:root{--bg:#0a0e1a;--l:#2ee6d6;--r:#ff4655}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{width:1920px;height:1080px;overflow:hidden;background:transparent;font:700 22px 'Barlow Condensed','Arial Narrow',sans-serif;color:#fff;text-transform:uppercase}
+#sel,#hud{position:absolute;inset:0;opacity:0;transition:opacity .5s}
+body[data-scene=select] #sel,body[data-scene=hud] #hud{opacity:1}
+/* Selección de agentes */
+#sel{background:radial-gradient(circle at 50% 0,#16203a,#070a13 70%);display:flex;align-items:flex-end;padding-bottom:70px}
+#t{position:absolute;top:50px;width:100%;text-align:center;font-size:64px;font-weight:800;letter-spacing:10px}
+.grp{--c:var(--l)}.grp.t1{--c:var(--r)}
+.tn{font-size:34px;margin-bottom:12px;padding-left:6px;border-left:6px solid var(--c)}
+.g{display:flex;gap:10px}
+.c{width:160px;height:640px;position:relative;background:linear-gradient(#1a2440,#0d1324);overflow:hidden;border-top:5px solid var(--c)}
+.c img{position:absolute;bottom:70px;left:50%;transform:translateX(-50%);height:540px;max-width:none}
+.c em{position:absolute;top:200px;left:0;right:0;text-align:center;font:800 120px sans-serif;opacity:.12}
+.c .n{position:absolute;bottom:0;left:0;right:0;height:70px;background:rgba(5,8,16,.92);padding:8px 12px;font-size:24px}
+.c small{display:block;font-size:16px;color:var(--c);letter-spacing:1px}
+#mid{width:240px;text-align:center;font-size:56px;font-weight:800;padding-bottom:300px}
+#mid small{display:block;font-size:26px;letter-spacing:4px;opacity:.7}
+/* En partida */
+#sb{position:absolute;top:0;left:50%;transform:translateX(-50%);display:flex;align-items:stretch;background:rgba(10,14,26,.92)}
+#sb>div{padding:10px 28px;font-size:30px;display:flex;align-items:center}
+#sb .l{border-bottom:4px solid var(--l)}#sb .rt{border-bottom:4px solid var(--r)}
+#sb .s{background:#fff;color:#000;font-size:40px;font-weight:800;min-width:70px;justify-content:center}
+#sb .m{font-size:20px;opacity:.8;letter-spacing:3px}
+.st{position:absolute;top:150px;display:flex;flex-direction:column;gap:6px}
+#h0{left:24px;--c:var(--l)}#h1{right:24px;--c:var(--r)}
+.r{width:400px;height:68px;background:rgba(10,14,26,.88);display:flex;align-items:center;border-left:5px solid var(--c)}
+#h1 .r{flex-direction:row-reverse;border-left:0;border-right:5px solid var(--c)}
+.r.d{opacity:.4;filter:grayscale(1)}
+.r img.a{width:68px;height:68px}.r img.w{width:104px;height:38px;object-fit:contain}
+#h1 .r img.w{transform:scaleX(-1)}
+.i{flex:1;padding:0 10px}.nm{display:flex;justify-content:space-between;font-size:22px}
+.b{height:10px;background:#222;margin-top:4px}.b i{display:block;height:100%;background:var(--c);transition:width .4s}
+.r.lo .b i{background:#ff4655}
+.ar{display:flex;align-items:center;gap:3px;font-size:18px;color:#7fd6ff;padding:0 4px}
+</style>
+<div id=sel></div>
+<div id=hud><div id=sb></div><div class=st id=h0></div><div class=st id=h1></div></div>
+<script>
+let A = {}, W = {}, S;
+const J = u => fetch(u).then(r => r.json()).catch(() => ({ data: [] }));
+const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;' }[c]));
+const SH = '<svg viewBox="0 0 10 12" width=14><path d="M5 0L10 2v4c0 3-2 5-5 6C2 11 0 9 0 6V2z" fill="currentColor"/></svg>';
+const grp = i => `<div class="grp t${i}"><div class=tn>${esc(S.teams[i].name)}</div><div class=g>` +
+  S.teams[i].players.map(p => { const a = A[p.agent] || {};
+    return `<div class=c>${a.bust ? `<img src="${a.bust}">` : '<em>?</em>'}<div class=n>${esc(p.name)}<small>${esc(p.agent || 'Eligiendo…')}</small></div></div>`; }).join('') + '</div></div>';
+const row = p => { const a = A[p.agent] || {}, hp = Math.max(0, Math.min(100, p.hp | 0)), x = `onerror="this.style.visibility='hidden'"`;
+  return `<div class="r ${hp<=0?'d':''} ${hp<40?'lo':''}"><img class=a src="${a.icon||''}" ${x}>
+    <div class=i><div class=nm><span>${esc(p.name)}</span><span>${hp>0?hp:''}</span></div><div class=b><i style="width:${hp}%"></i></div></div>
+    ${p.armor ? `<div class=ar>${SH}${p.armor}</div>` : ''}<img class=w src="${W[p.weapon]||''}" ${x}></div>`; };
+function render() {
+  document.body.dataset.scene = S.scene;
+  sel.innerHTML = `<div id=t>Selección de agentes</div>${grp(0)}<div id=mid>VS<small>${esc(S.map)}</small></div>${grp(1)}`;
+  sb.innerHTML = `<div class=l>${esc(S.teams[0].name)}</div><div class=s>${S.score[0]}</div><div class=m>${esc(S.map)}</div><div class=s>${S.score[1]}</div><div class=rt>${esc(S.teams[1].name)}</div>`;
+  h0.innerHTML = S.teams[0].players.map(row).join(''); h1.innerHTML = S.teams[1].players.map(row).join('');
+}
+Promise.all([J('https://valorant-api.com/v1/agents?isPlayableCharacter=true'), J('https://valorant-api.com/v1/weapons')]).then(([a, w]) => {
+  a.data.forEach(x => A[x.displayName] = { icon: x.displayIcon, bust: x.fullPortrait || x.bustPortrait });
+  w.data.forEach(x => W[x.displayName] = x.displayIcon);
+  new EventSource('/events').onmessage = e => { S = JSON.parse(e.data); render(); };
+});
+</script>

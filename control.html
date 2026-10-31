@@ -1,0 +1,45 @@
+<!doctype html><meta charset=utf-8><title>Control · Valorant Broadcast</title>
+<style>
+body{font:14px system-ui;background:#0a0e1a;color:#e8ecf4;margin:0;padding:20px}
+h1{font-size:18px;margin:0 0 12px}.bar{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:16px}
+button{background:#1b2338;color:#fff;border:1px solid #33405f;padding:8px 14px;border-radius:6px;cursor:pointer}
+button.on{background:#2ee6d6;color:#001;border-color:#2ee6d6}
+input,select{background:#121a2c;color:#fff;border:1px solid #33405f;border-radius:6px;padding:6px;min-width:0}
+.teams{display:grid;grid-template-columns:1fr 1fr;gap:20px}
+.p{display:grid;grid-template-columns:1.2fr 1.2fr 1.2fr 64px 64px;gap:6px;margin-bottom:6px}
+small{opacity:.6}
+</style>
+<h1>Valorant Broadcast · Panel de control</h1>
+<div class=bar id=bar></div><div class=teams id=teams></div>
+<small>Columnas: nombre · agente · arma · vida (0-100) · escudo (0/25/50). Los cambios se ven al instante en el overlay.</small>
+<script>
+let S, ag = [], wp = [];
+const J = u => fetch(u).then(r => r.json()).catch(() => ({ data: [] }));
+const post = () => fetch('/api/state', { method: 'POST', body: JSON.stringify(S) });
+const esc = s => String(s ?? '').replace(/"/g, '&quot;');
+const opt = (l, v) => l.map(x => `<option ${x == v ? 'selected' : ''}>${x}</option>`).join('');
+function build() {
+  bar.innerHTML = [['select','Selección de agentes'],['hud','En partida'],['none','Ocultar']]
+    .map(([k,l]) => `<button class="${S.scene==k?'on':''}" data-s=${k}>${l}</button>`).join('') +
+    ` Mapa <input data-k=map value="${esc(S.map)}" size=10> Marcador <input data-sc=0 type=number value=${S.score[0]} style=width:50px> - <input data-sc=1 type=number value=${S.score[1]} style=width:50px>`;
+  teams.innerHTML = S.teams.map((t, i) => `<div><input data-tn=${i} value="${esc(t.name)}" style="width:100%;margin-bottom:8px;font-weight:700">` +
+    t.players.map((p, j) => `<div class=p data-t=${i} data-p=${j}>
+      <input data-k=name value="${esc(p.name)}">
+      <select data-k=agent><option value="">Agente…</option>${opt(ag, p.agent)}</select>
+      <select data-k=weapon><option value="">Arma…</option>${opt(wp, p.weapon)}</select>
+      <input data-k=hp type=number min=0 max=100 value=${p.hp}>
+      <select data-k=armor data-n=1>${[0,25,50].map(a => `<option ${a==p.armor?'selected':''}>${a}</option>`).join('')}</select></div>`).join('') + '</div>').join('');
+}
+addEventListener('input', e => {
+  const d = e.target.dataset, r = e.target.closest('[data-p]');
+  const v = e.target.type == 'number' || d.n ? +e.target.value : e.target.value;
+  if (r) S.teams[r.dataset.t].players[r.dataset.p][d.k] = v;
+  else if (d.tn != null) S.teams[d.tn].name = v;
+  else if (d.sc != null) S.score[d.sc] = v;
+  else if (d.k) S[d.k] = v;
+  post();
+});
+addEventListener('click', e => { const s = e.target.dataset.s; if (s) { S.scene = s; post(); build(); } });
+Promise.all([J('https://valorant-api.com/v1/agents?isPlayableCharacter=true'), J('https://valorant-api.com/v1/weapons'), J('/api/state')])
+  .then(([a, w, s]) => { ag = a.data.map(x => x.displayName).sort(); wp = w.data.map(x => x.displayName); S = s; build(); });
+</script>
